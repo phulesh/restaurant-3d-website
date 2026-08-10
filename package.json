@@ -1,0 +1,35 @@
+{
+  "name": "samrat-electronics-hvac-website",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Premium 3D animated website for Samrat Electronics – HVAC Solutions, Raipur.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "start": "vite preview --host 0.0.0.0 --port ${PORT:-4173}"
+  },
+  "dependencies": {
+    "@react-three/drei": "^9.117.0",
+    "@react-three/fiber": "^8.17.10",
+    "lenis": "^1.1.18",
+    "lucide-react": "^0.469.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "~0.169.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/three": "~0.169.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.0.0",
+    "typescript": "~5.6.3",
+    "vite": "^6.0.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
