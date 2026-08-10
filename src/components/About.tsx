@@ -59,7 +59,7 @@ export default function About() {
               installed and commissioned with the same discipline — {BUSINESS.tagline.toLowerCase()}
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <a href={BUSINESS.phoneHref} className="btn-ghost px-6! py-3! text-sm">
+              <a href={BUSINESS.phoneHref} className="btn-ghost !px-6 !py-3 text-sm">
                 <Phone className="h-4 w-4 text-cyan-300" aria-hidden="true" />
                 Talk to us — {BUSINESS.phoneDisplay}
               </a>

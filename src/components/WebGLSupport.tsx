@@ -14,7 +14,7 @@ export function WebGLFallback() {
           Your browser or device does not support WebGL, which this 3D experience needs. The rest of
           the site works perfectly — and we&apos;re just a call away.
         </p>
-        <a href={BUSINESS.phoneHref} className="btn-primary mt-6 px-6! py-3! text-sm">
+        <a href={BUSINESS.phoneHref} className="btn-primary mt-6 !px-6 !py-3 text-sm">
           <Phone className="h-4 w-4" aria-hidden="true" />
           Call {BUSINESS.phoneDisplay}
         </a>
