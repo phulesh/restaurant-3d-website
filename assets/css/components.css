@@ -1,0 +1,292 @@
+/* ============================================================
+   Aashirwad Restaurant — components.css
+   Reusable UI: buttons, chips, badges, cards, inputs, modals
+   ============================================================ */
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+  font-family: var(--font-ui);
+  font-weight: 700; font-size: 0.95rem;
+  padding: 0.82rem 1.5rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  min-height: 48px;               /* large touch target */
+  transition: transform 0.22s var(--ease-out), box-shadow 0.25s ease, background 0.25s ease, border-color 0.25s ease, filter 0.25s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+.btn svg { flex: none; }
+.btn:active { transform: scale(0.97); }
+
+.btn-gold {
+  background: var(--gold-grad);
+  color: #2b1c05;
+  box-shadow: var(--shadow-gold);
+}
+.btn-gold:hover { transform: translateY(-2px); filter: brightness(1.07); box-shadow: 0 16px 40px -12px rgba(217, 166, 60, 0.55); }
+
+.btn-ghost {
+  background: var(--glass);
+  color: var(--cream);
+  border-color: var(--glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.btn-ghost:hover { transform: translateY(-2px); border-color: rgba(233, 192, 94, 0.5); background: rgba(24, 40, 73, 0.75); }
+
+.btn-outline-gold {
+  background: transparent;
+  color: var(--gold-300);
+  border-color: rgba(233, 192, 94, 0.55);
+}
+.btn-outline-gold:hover { background: rgba(233, 192, 94, 0.12); transform: translateY(-2px); }
+
+.btn-whatsapp { background: linear-gradient(135deg, #3ddc7a, #1faa50); color: #06240f; box-shadow: 0 12px 32px -12px rgba(49, 199, 103, 0.55); }
+.btn-whatsapp:hover { transform: translateY(-2px); filter: brightness(1.06); }
+
+.btn-call { background: linear-gradient(135deg, #5ea0ff, #2d6fe0); color: #04122c; box-shadow: 0 12px 32px -12px rgba(70, 130, 240, 0.55); }
+.btn-call:hover { transform: translateY(-2px); filter: brightness(1.08); }
+
+.btn-sm { min-height: 40px; padding: 0.55rem 1.05rem; font-size: 0.86rem; }
+.btn-block { width: 100%; }
+
+.btn-icon {
+  width: 48px; height: 48px; padding: 0;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--glass); border: var(--ring-gold);
+  color: var(--gold-300);
+  transition: transform 0.2s var(--ease-out), background 0.2s ease, box-shadow 0.2s ease;
+}
+.btn-icon:hover { transform: translateY(-2px); background: rgba(233, 192, 94, 0.15); box-shadow: var(--glow-gold); }
+
+/* ---------- Veg badge (Indian standard) ---------- */
+.veg-badge {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em;
+  color: #7ce69b;
+  background: var(--veg-soft);
+  border: 1px solid rgba(47, 158, 85, 0.55);
+  border-radius: 999px;
+  padding: 0.22rem 0.62rem;
+  text-transform: uppercase;
+}
+.veg-badge .veg-dot {
+  width: 11px; height: 11px; border-radius: 4px;
+  border: 2px solid #7ce69b;
+  display: inline-grid; place-items: center;
+  background: transparent;
+  padding: 0;
+}
+.veg-badge .veg-dot::after {
+  content: ""; width: 4px; height: 4px; border-radius: 50%;
+  background: #7ce69b;
+}
+
+/* ---------- Open / closed pill ---------- */
+.status-pill {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  font-weight: 800; font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 0.5rem 1.05rem;
+  border-radius: 999px;
+  border: 1px solid;
+}
+.status-pill .dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: currentColor;
+  position: relative;
+}
+.status-pill.open { color: #7ce69b; background: var(--veg-soft); border-color: rgba(47, 158, 85, 0.5); }
+.status-pill.closed { color: #ff9d9d; background: var(--red-soft); border-color: rgba(224, 85, 85, 0.5); }
+.status-pill .dot.live::after {
+  content: ""; position: absolute; inset: -4px; border-radius: 50%;
+  border: 1.5px solid currentColor; opacity: 0.7;
+  animation: ping 1.8s ease-out infinite;
+}
+@keyframes ping {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  70%, 100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* ---------- Glass cards ---------- */
+.glass-card {
+  background: var(--card-bg);
+  border: 1px solid var(--glass-border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  position: relative;
+  overflow: hidden;
+}
+/* elegant gold corner accents */
+.glass-card::before, .glass-card::after {
+  content: ""; position: absolute; width: 46px; height: 46px;
+  border: 0; pointer-events: none; opacity: 0.85;
+}
+.glass-card::before { top: 10px; left: 10px; border-top: 1.5px solid var(--gold-500); border-left: 1.5px solid var(--gold-500); border-radius: 10px 0 0 0; }
+.glass-card::after { bottom: 10px; right: 10px; border-bottom: 1.5px solid var(--gold-500); border-right: 1.5px solid var(--gold-500); border-radius: 0 0 10px 0; }
+
+/* ---------- Inputs ---------- */
+.field {
+  display: flex; align-items: center; gap: 0.7rem;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  padding: 0 1.25rem;
+  min-height: 54px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.field:focus-within { border-color: rgba(233, 192, 94, 0.65); box-shadow: var(--glow-gold); }
+.field svg { flex: none; color: var(--gold-400); }
+.field input {
+  flex: 1; min-width: 0; background: transparent; border: 0; outline: none;
+  color: var(--cream); font-size: 1rem;
+}
+.field input::placeholder { color: var(--cream-40); }
+
+/* ---------- Category chips ---------- */
+.chip-row {
+  display: flex; gap: 0.6rem;
+  overflow-x: auto;
+  padding: 0.3rem 0.2rem 0.9rem;
+  scrollbar-width: none;
+}
+.chip-row::-webkit-scrollbar { display: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  flex: none;
+  font-weight: 700; font-size: 0.88rem;
+  color: var(--cream-70);
+  background: var(--glass);
+  border: 1px solid var(--glass-border-soft);
+  border-radius: 999px;
+  padding: 0.62rem 1.1rem;
+  min-height: 46px;
+  transition: transform 0.2s var(--ease-out), color 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.chip svg { color: var(--gold-400); }
+.chip:hover { transform: translateY(-2px); color: var(--cream); border-color: rgba(233, 192, 94, 0.45); }
+.chip.active {
+  color: #2b1c05;
+  background: var(--gold-grad);
+  border-color: transparent;
+  box-shadow: var(--shadow-gold);
+}
+.chip.active svg { color: #2b1c05; }
+.chip .count { opacity: 0.75; font-size: 0.75rem; font-weight: 800; }
+.chip.active .count { opacity: 0.85; }
+
+/* ---------- Select (sort) ---------- */
+.select-wrap { position: relative; }
+.select-wrap select {
+  appearance: none; -webkit-appearance: none;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--cream);
+  font-weight: 700; font-size: 0.88rem;
+  border-radius: 999px;
+  padding: 0.72rem 2.6rem 0.72rem 1.2rem;
+  min-height: 46px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.select-wrap select:focus-visible { border-color: var(--gold-400); box-shadow: var(--glow-gold); }
+.select-wrap::after {
+  content: ""; position: absolute; right: 1.15rem; top: 50%;
+  width: 8px; height: 8px;
+  border-right: 2px solid var(--gold-400); border-bottom: 2px solid var(--gold-400);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+
+/* ---------- Modal ---------- */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(3, 6, 14, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: grid; place-items: center;
+  padding: 1.25rem;
+  animation: fadeIn 0.25s ease both;
+}
+.modal {
+  width: min(520px, 100%);
+  max-height: min(86vh, 760px);
+  overflow: auto;
+  background: linear-gradient(165deg, #12203f, #08101f 70%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg), var(--glow-gold);
+  animation: modalIn 0.35s var(--ease-spring) both;
+  position: relative;
+}
+.modal-close {
+  position: absolute; top: 14px; right: 14px; z-index: 2;
+  width: 42px; height: 42px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(5, 9, 19, 0.65);
+  border: 1px solid var(--glass-border);
+  color: var(--cream);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.modal-close:hover { transform: rotate(90deg); background: rgba(224, 85, 85, 0.35); }
+.modal-body { padding: 1.4rem 1.5rem 1.6rem; }
+@keyframes modalIn {
+  from { transform: translateY(34px) scale(0.94); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- Toast ---------- */
+.toast-stack {
+  position: fixed; z-index: 1500;
+  bottom: calc(86px + env(safe-area-inset-bottom)); right: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+  pointer-events: none;
+}
+.toast {
+  display: flex; align-items: center; gap: 0.7rem;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1.2rem;
+  box-shadow: var(--shadow-lg);
+  font-size: 0.9rem; font-weight: 600;
+  animation: toastIn 0.35s var(--ease-spring) both;
+  max-width: 320px;
+}
+.toast .tick {
+  width: 22px; height: 22px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  background: var(--veg-soft); border: 1px solid rgba(47, 158, 85, 0.6); color: #7ce69b;
+}
+.toast.out { animation: toastOut 0.3s ease both; }
+@keyframes toastIn { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes toastOut { to { transform: translateX(30px); opacity: 0; } }
+
+/* ---------- Marquee-style info ribbon (hero bottom) ---------- */
+.ribbon {
+  display: flex; align-items: center; justify-content: center;
+  gap: 1.6rem; flex-wrap: wrap;
+  font-size: 0.88rem; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--cream-70);
+  padding: 1.05rem 1.4rem;
+  border-radius: 999px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.ribbon span { display: inline-flex; align-items: center; gap: 0.5rem; }
+.ribbon svg { color: var(--gold-400); }
+.ribbon .sep { width: 5px; height: 5px; border-radius: 50%; background: var(--gold-500); opacity: 0.6; }
+
+@media (max-width: 640px) {
+  .ribbon { gap: 0.7rem 1.2rem; border-radius: 22px; font-size: 0.8rem; }
+}
