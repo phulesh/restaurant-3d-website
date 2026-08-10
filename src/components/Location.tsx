@@ -64,7 +64,7 @@ export default function Location() {
                 href={BUSINESS.mapsDirections}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-primary mt-8 w-full py-3.5! text-sm"
+                className="btn-primary mt-8 w-full !py-3.5 text-sm"
               >
                 <Navigation className="h-4 w-4" aria-hidden="true" />
                 Get Directions

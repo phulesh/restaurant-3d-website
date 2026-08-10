@@ -83,7 +83,7 @@ export default function Contact() {
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">HVAC Solutions</p>
               <p className="mt-2 text-xs text-slate-400">{BUSINESS.addressShort}</p>
             </div>
-            <a href={BUSINESS.phoneHref} className="btn-primary shrink-0 px-8! py-4!">
+            <a href={BUSINESS.phoneHref} className="btn-primary shrink-0 !px-8 !py-4">
               <Phone className="h-5 w-5" aria-hidden="true" />
               Call Now
             </a>

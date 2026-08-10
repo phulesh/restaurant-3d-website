@@ -67,11 +67,11 @@ export default function Hero({ reducedMotion = false }: HeroProps) {
           </p>
 
           <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
-            <a href={BUSINESS.phoneHref} className="btn-primary px-8! py-4! text-base">
+            <a href={BUSINESS.phoneHref} className="btn-primary !px-8 !py-4 text-base">
               <Phone className="h-5 w-5" aria-hidden="true" />
               Call Now
             </a>
-            <button type="button" onClick={() => scrollTo('solutions')} className="btn-ghost px-8! py-4! text-base">
+            <button type="button" onClick={() => scrollTo('solutions')} className="btn-ghost !px-8 !py-4 text-base">
               Explore Solutions
               <ChevronDown className="h-4 w-4" aria-hidden="true" />
             </button>

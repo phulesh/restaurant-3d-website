@@ -73,7 +73,7 @@ export default function Navbar() {
         </ul>
 
         <div className="flex items-center gap-3">
-          <a href={BUSINESS.phoneHref} className="btn-primary hidden px-5! py-2.5! text-sm sm:inline-flex">
+          <a href={BUSINESS.phoneHref} className="btn-primary hidden !px-5 !py-2.5 text-sm sm:inline-flex">
             <Phone className="h-4 w-4" aria-hidden="true" />
             Call Now
           </a>
@@ -109,7 +109,7 @@ export default function Navbar() {
                 </li>
               ))}
             </ul>
-            <a href={BUSINESS.phoneHref} className="btn-primary mt-8 w-full py-4! text-base">
+            <a href={BUSINESS.phoneHref} className="btn-primary mt-8 w-full !py-4 text-base">
               <Phone className="h-5 w-5" aria-hidden="true" />
               Call Now · {BUSINESS.phoneDisplay}
             </a>
