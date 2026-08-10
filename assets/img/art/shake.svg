@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" role="img" aria-label="Illustration of a chocolate milkshake with whipped cream">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c2c52"/><stop offset="1" stop-color="#0a1122"/>
+    </linearGradient>
+    <linearGradient id="shake" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8a5a2b"/><stop offset="0.5" stop-color="#c08a4e"/>
+      <stop offset="1" stop-color="#7a4c22"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="260" rx="22" fill="url(#bg)"/>
+  <ellipse cx="100" cy="234" rx="54" ry="8" fill="#000" opacity="0.45"/>
+  <!-- glass -->
+  <path d="M74 64 L84 208 Q86 216 94 216 L106 216 Q114 216 116 208 L126 64 Z" fill="#f3e2c8" opacity="0.14"/>
+  <path d="M74 64 L84 208 Q86 216 94 216 L106 216 Q114 216 116 208 L126 64 Z" fill="none" stroke="#d9a63c" stroke-width="2" opacity="0.5"/>
+  <!-- shake -->
+  <path d="M76 84 Q100 76 124 84 L116 206 Q114 212 106 212 L94 212 Q86 212 84 206 Z" fill="url(#shake)"/>
+  <!-- chocolate drizzle on glass -->
+  <path d="M76 96 q8 -6 16 0 M120 110 q8 -6 16 0" stroke="#7a4c22" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.8"/>
+  <!-- whipped cream -->
+  <path d="M72 74 Q64 44 84 36 Q86 22 104 24 Q122 20 126 36 Q146 42 128 74 Z" fill="#fffaf0"/>
+  <path d="M78 68 q-8 -6 2 -10 M88 60 q-6 -8 6 -10 M106 56 q6 -10 16 -6 M118 66 q10 -4 4 -8" stroke="#f0d9a8" stroke-width="2" fill="none" opacity="0.7" stroke-linecap="round"/>
+  <!-- chocolate drizzle top -->
+  <path d="M76 70 q10 -6 20 -2 q10 -4 20 2 q6 -4 12 -2" stroke="#6e421d" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <!-- shavings -->
+  <path d="M88 44 q4 -4 8 0 M108 48 q5 -4 9 0" stroke="#6e421d" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <circle cx="96" cy="40" r="1.8" fill="#6e421d"/><circle cx="114" cy="40" r="1.8" fill="#6e421d"/>
+  <!-- straw -->
+  <rect x="110" y="26" width="5" height="58" rx="2.5" fill="#d9a63c"/>
+  <!-- steam -->
+  <path d="M90 58 q-4 -8 2 -13 M104 54 q-4 -8 2 -13" stroke="#f8f2e4" stroke-width="2.2" fill="none" opacity="0.45" stroke-linecap="round"/>
+  <!-- sparkles -->
+  <path d="M40 80 l3 3 -3 3 M164 150 l3 3 -3 3 M44 180 l3 3 -3 3" stroke="#e9c05e" stroke-width="1.4" fill="none" opacity="0.7" stroke-linecap="round"/>
+  <circle cx="38" cy="130" r="2" fill="#e9c05e" opacity="0.7"/><circle cx="166" cy="90" r="2" fill="#e9c05e" opacity="0.6"/>
+</svg>
