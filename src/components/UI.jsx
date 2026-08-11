@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { motion, useInView } from 'framer-motion'
 import {
   BadgeCheck, BellRing, Bot, BotMessageSquare, BrainCircuit, CalendarClock,
@@ -27,10 +28,10 @@ export function Icon({ name, size = 20, strokeWidth = 1.8, ...props }) {
 
 export function Logo({ compact = false }) {
   return (
-    <a className="brand" href="#home" aria-label="AI SalesFlow home">
+    <Link className="brand" to="/" aria-label="AI SalesFlow home">
       <span className="brand-mark" aria-hidden="true"><span>AI</span><i /></span>
       {!compact && <span className="brand-name">AI Sales<span>Flow</span></span>}
-    </a>
+    </Link>
   )
 }
 
@@ -40,6 +41,14 @@ export function Button({ href, children, variant = 'primary', icon = 'ArrowUpRig
     CalendarDays: () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2Z" /></svg>,
   }
   const ButtonIcon = arrowIcons[icon]
+  const isInternal = href && !href.startsWith('#') && !href.startsWith('http')
+  if (isInternal) {
+    return (
+      <Link to={href} className={`button button-${variant} ${className}`} {...props}>
+        <span>{children}</span>{ButtonIcon && <ButtonIcon />}
+      </Link>
+    )
+  }
   return (
     <a href={href} className={`button button-${variant} ${className}`} {...props}>
       <span>{children}</span>{ButtonIcon && <ButtonIcon />}

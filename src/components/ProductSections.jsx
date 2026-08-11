@@ -121,7 +121,7 @@ export function Channels() {
           <div className="mini-flow-list">
             {['AI understands intent', 'AI responds naturally', 'Lead information extracted', 'CRM and admin updated'].map((item) => <div key={item}><CircleCheck size={17} />{item}</div>)}
           </div>
-          <Button href="mailto:hello@aisalesflow.app?subject=Connect%20my%20channels">Connect Your Channels</Button>
+          <Button href="/signup">Connect Your Channels</Button>
         </Reveal>
         <Reveal className="network-stage">
           <div className="network-ring ring-one" /><div className="network-ring ring-two" />

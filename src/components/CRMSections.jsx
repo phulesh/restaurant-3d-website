@@ -105,7 +105,7 @@ export function AutomationWorkflow() {
             ))}
           </div>
         </div>
-        <Reveal className="workflow-summary"><span><i /> ACTIVE AUTOMATION</span><p>Avg. processing time <b>2.8 seconds</b></p><p>Manual actions saved <b>8 per lead</b></p><Button href="#pricing" variant="small">Build your flow</Button></Reveal>
+        <Reveal className="workflow-summary"><span><i /> ACTIVE AUTOMATION</span><p>Avg. processing time <b>2.8 seconds</b></p><p>Manual actions saved <b>8 per lead</b></p><Button href="/signup" variant="small">Build your flow</Button></Reveal>
       </div>
     </section>
   )
