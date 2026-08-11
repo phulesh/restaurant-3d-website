@@ -47,15 +47,20 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', mode: process.env.OPENAI_API_KEY ? 'production' : 'demo', timestamp: new Date().toISOString() });
 });
 
+// API 404 — must come before the SPA catch-all so unknown /api routes
+// return JSON instead of hanging / falling through to index.html.
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
   const distPath = path.join(__dirname, '..', 'dist');
   app.use(express.static(distPath));
-  // Express 5 uses new path syntax for catch-all
+  // SPA catch-all: any non-API GET route returns index.html so client-side
+  // routing works on refresh/deep links. Express 5 path-to-regexp syntax.
   app.get('/{*splat}', (req, res) => {
-    if (!req.path.startsWith('/api')) {
-      res.sendFile(path.join(distPath, 'index.html'));
-    }
+    res.sendFile(path.join(distPath, 'index.html'));
   });
 }
 
