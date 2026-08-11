@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowRight, Check, ChevronDown, LockKeyhole, Quote, ShieldCheck, Sparkles, Star } from 'lucide-react'
 import { faqs, footerGroups, pricingPlans, testimonials } from '../data/siteData'
@@ -44,13 +45,13 @@ export function Pricing() {
               {plan.featured && <div className="popular"><Sparkles size={13} /> MOST POPULAR</div>}
               <div className="plan-head"><span>{plan.name}</span><p>{plan.description}</p></div>
               <div className="plan-price"><strong>{plan.price}</strong><span>{plan.period}</span></div>
-              <a href={plan.href} className={`plan-cta ${plan.featured ? 'primary' : ''}`}>{plan.cta}<ArrowRight size={16} /></a>
+              <Link to={plan.href} className={`plan-cta ${plan.featured ? 'primary' : ''}`}>{plan.cta}<ArrowRight size={16} /></Link>
               <div className="plan-divider" /><span className="includes">WHAT'S INCLUDED</span>
               <ul>{plan.features.map((feature) => <li key={feature}><i><Check size={13} /></i>{feature}</li>)}</ul>
             </Reveal>
           ))}
         </div>
-        <p className="pricing-footnote">Need a tailored rollout? <a href="mailto:sales@aisalesflow.app?subject=Custom%20AI%20SalesFlow%20rollout">Talk to our solutions team <ArrowRight size={14} /></a></p>
+        <p className="pricing-footnote">Need a tailored rollout? <a href="/contact-sales">Talk to our solutions team <ArrowRight size={14} /></a></p>
       </div>
     </section>
   )
@@ -83,7 +84,7 @@ export function FAQ() {
       <div className="shell faq-layout">
         <Reveal className="faq-copy">
           <SectionHeading align="left" eyebrow="Clear answers" title="Frequently Asked Questions" text="Everything you need to evaluate AI SalesFlow for your sales operation." />
-          <div className="faq-help"><div><Icon name="MessagesSquare" size={20} /></div><p><b>Still have a question?</b><span>Talk to a product specialist about your workflow.</span></p><a href="mailto:hello@aisalesflow.app?subject=AI%20SalesFlow%20question">Ask us <ArrowRight size={14} /></a></div>
+          <div className="faq-help"><div><Icon name="MessagesSquare" size={20} /></div><p><b>Still have a question?</b><span>Talk to a product specialist about your workflow.</span></p><a href="/contact-sales">Ask us <ArrowRight size={14} /></a></div>
         </Reveal>
         <Reveal className="faq-list">
           {faqs.map((item, index) => {
@@ -110,7 +111,7 @@ export function FinalCTA() {
         <Reveal className="cta-stage">
           <div className="cta-grid" /><div className="cta-glow" />
           <div className="cta-orb" aria-hidden="true"><i /><i /><i /><div><Sparkles /></div></div>
-          <div className="cta-content"><div className="eyebrow"><span /> Your next growth channel is already open</div><h2>Your Next Customer Could Be in Your Next Message.</h2><p>Let AI handle conversations, capture leads, qualify prospects and keep your sales pipeline organized.</p><div><Button href="#pricing">Start Building Your AI Sales System</Button><Button href="mailto:hello@aisalesflow.app?subject=Book%20an%20AI%20SalesFlow%20demo" variant="secondary" icon="CalendarDays">Book a Demo</Button></div><small><Check size={14} /> Guided setup <i /> <Check size={14} /> No credit card required <i /> <Check size={14} /> Human support</small></div>
+          <div className="cta-content"><div className="eyebrow"><span /> Your next growth channel is already open</div><h2>Your Next Customer Could Be in Your Next Message.</h2><p>Let AI handle conversations, capture leads, qualify prospects and keep your sales pipeline organized.</p><div><Button href="#pricing">Start Building Your AI Sales System</Button><Button href="/contact-sales" variant="secondary" icon="CalendarDays">Book a Demo</Button></div><small><Check size={14} /> Guided setup <i /> <Check size={14} /> No credit card required <i /> <Check size={14} /> Human support</small></div>
         </Reveal>
       </div>
     </section>
@@ -126,7 +127,7 @@ export function Footer() {
       <div className="shell footer-grid">
         <div className="footer-brand"><Logo /><p>AI-powered sales automation for WhatsApp, Telegram and modern businesses.</p><div className="footer-status"><i /> All systems operational</div></div>
         {footerGroups.map((group) => <div className="footer-group" key={group.title}><h3>{group.title}</h3>{group.links.map((link) => <a key={link.label} href={link.href}>{link.label}</a>)}</div>)}
-        <div className="footer-group footer-connect"><h3>Connect</h3><p>Follow product updates and automation insights.</p><div>{social.map(([label, icon, href]) => <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label}><Icon name={icon} size={17} /></a>)}</div><a className="footer-email" href="mailto:hello@aisalesflow.app">hello@aisalesflow.app</a></div>
+        <div className="footer-group footer-connect"><h3>Connect</h3><p>Follow product updates and automation insights.</p><div>{social.map(([label, icon, href]) => <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label}><Icon name={icon} size={17} /></a>)}</div><a className="footer-email" href="/contact-sales">hello@aisalesflow.app</a></div>
       </div>
       <div className="shell footer-bottom"><span>© 2026 AI SalesFlow. All rights reserved.</span><div><span>Designed for modern revenue teams</span><a href="#home">Back to top ↑</a></div></div>
     </footer>

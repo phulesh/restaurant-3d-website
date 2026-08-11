@@ -3,14 +3,23 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  server: { host: '0.0.0.0', allowedHosts: true },
+  server: {
+    host: '0.0.0.0',
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      }
+    }
+  },
   preview: { host: '0.0.0.0', allowedHosts: true },
   build: {
     rollupOptions: {
       output: {
         manualChunks: {
           three: ['three', '@react-three/fiber', '@react-three/drei'],
-          motion: ['framer-motion'], 
+          motion: ['framer-motion'],
         },
       },
     },

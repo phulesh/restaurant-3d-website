@@ -13,7 +13,7 @@ export const hero = {
   eyebrow: 'AI-native revenue operations',
   title: 'Turn Every Conversation Into a Customer',
   subtitle: 'AI-powered Telegram & WhatsApp Sales Assistant that talks to customers, qualifies leads, and manages your entire sales pipeline automatically.',
-  primaryCta: { label: 'Start Free', href: '#pricing' },
+  primaryCta: { label: 'Start Free', href: '/signup' },
   secondaryCta: { label: 'View Live Demo', href: '#ai-demo' },
   trust: ['AI Sales Automation', 'Lead Generation', 'CRM', 'WhatsApp', 'Telegram'],
 }
@@ -89,17 +89,17 @@ export const pricingPlans = [
   {
     name: 'Starter', price: 'Custom', period: 'for small businesses', description: 'Start capturing every conversation.',
     features: ['AI customer support', 'Telegram automation', 'Basic lead generation', 'Basic CRM', 'Lead notifications'],
-    cta: 'Start Starter', href: 'mailto:hello@aisalesflow.app?subject=AI%20SalesFlow%20Starter', featured: false,
+    cta: 'Start Starter', href: '/signup?plan=starter', featured: false,
   },
   {
     name: 'Professional', price: 'Custom', period: 'for growing businesses', description: 'One intelligent system for your sales team.',
     features: ['WhatsApp + Telegram', 'Advanced AI Agent', 'Lead qualification', 'Lead scoring', 'CRM pipeline', 'Follow-up automation', 'Analytics'],
-    cta: 'Start Professional', href: 'mailto:hello@aisalesflow.app?subject=AI%20SalesFlow%20Professional', featured: true,
+    cta: 'Start Professional', href: '/signup?plan=professional', featured: true,
   },
   {
     name: 'Enterprise', price: 'Let’s talk', period: 'for advanced sales teams', description: 'Built around your process and scale.',
     features: ['Everything in Professional', 'Custom AI workflows', 'Advanced automation', 'Custom CRM', 'Team management', 'API integration', 'Priority support'],
-    cta: 'Contact Sales', href: 'mailto:sales@aisalesflow.app?subject=AI%20SalesFlow%20Enterprise', featured: false,
+    cta: 'Contact Sales', href: '/contact-sales', featured: false,
   },
 ]
 
@@ -124,5 +124,5 @@ export const faqs = [
 
 export const footerGroups = [
   { title: 'Product', links: [{ label: 'Features', href: '#features' }, { label: 'CRM', href: '#crm' }, { label: 'Automation', href: '#automation' }, { label: 'Integrations', href: '#channels' }, { label: 'Pricing', href: '#pricing' }] },
-  { title: 'Company', links: [{ label: 'About', href: '#home' }, { label: 'Contact', href: 'mailto:hello@aisalesflow.app' }, { label: 'Privacy', href: 'mailto:legal@aisalesflow.app?subject=Privacy' }, { label: 'Terms', href: 'mailto:legal@aisalesflow.app?subject=Terms' }] },
+  { title: 'Company', links: [{ label: 'About', href: '#home' }, { label: 'Contact', href: '/contact-sales' }, { label: 'Privacy', href: '#' }, { label: 'Terms', href: '#' }] },
 ]
