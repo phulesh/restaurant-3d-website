@@ -2,81 +2,89 @@ import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import db from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
+import { processConversationForLead } from '../services/leadEngine.js';
+import { extractLeadFields, evaluateQualification, nextQualificationQuestion } from '../utils/leadQualification.js';
 
 const router = Router();
 router.use(requireAuth);
 
-// AI chat endpoint (demo mode unless OPENAI_API_KEY is configured)
-router.post('/chat', (req, res) => {
+router.post('/chat', async (req, res) => {
   try {
-    const { message, conversation_id } = req.body;
+    const { message, conversation_id, channel } = req.body;
     if (!message) return res.status(400).json({ error: 'Message is required' });
 
     const business = db.prepare('SELECT * FROM businesses WHERE user_id = ?').get(req.userId);
 
-    // Get or create conversation
     let convId = conversation_id;
     if (!convId) {
       convId = uuid();
       db.prepare(`
         INSERT INTO conversations (id, user_id, customer_name, channel, last_message_at)
-        VALUES (?, ?, 'AI Test Customer', 'web', datetime('now'))
-      `).run(convId, req.userId);
+        VALUES (?, ?, 'AI Test Customer', ?, datetime('now'))
+      `).run(convId, req.userId, channel || 'web');
     }
 
-    // Save customer message
     const customerMsgId = uuid();
-    db.prepare('INSERT INTO messages (id, conversation_id, sender, content) VALUES (?, ?, ?, ?)').run(customerMsgId, convId, 'customer', message);
+    db.prepare('INSERT INTO messages (id, conversation_id, sender, content) VALUES (?, ?, ?, ?)')
+      .run(customerMsgId, convId, 'customer', message);
 
-    // Generate AI response
-    const aiResponse = generateDemoAIResponse(message, business);
+    const messages = db.prepare(
+      'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC'
+    ).all(convId);
 
-    // Save AI message
+    const extracted = extractLeadFields(messages);
+    const qualification = evaluateQualification({ messages, extracted });
+
+    const aiResponse = generateDemoAIResponse(message, business, { extracted, qualification });
+
     const aiMsgId = uuid();
-    db.prepare('INSERT INTO messages (id, conversation_id, sender, content, intent, entities) VALUES (?, ?, ?, ?, ?, ?)').run(
-      aiMsgId, convId, 'ai', aiResponse.content, aiResponse.intent, JSON.stringify(aiResponse.entities)
-    );
+    db.prepare('INSERT INTO messages (id, conversation_id, sender, content, intent, entities) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(aiMsgId, convId, 'ai', aiResponse.content, aiResponse.intent, JSON.stringify(aiResponse.entities));
 
-    db.prepare('UPDATE conversations SET last_message_at = datetime(\'now\') WHERE id = ?').run(convId);
+    db.prepare("UPDATE conversations SET last_message_at = datetime('now') WHERE id = ?").run(convId);
 
-    // Check if we have enough info to create a lead
-    const messages = db.prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC').all(convId);
-    const leadData = extractLeadFromConversation(messages);
-
-    if (leadData && leadData.name && (leadData.phone || leadData.email)) {
-      // Check for existing lead
-      let existingLead = null;
-      if (leadData.email) {
-        existingLead = db.prepare('SELECT * FROM leads WHERE user_id = ? AND email = ?').get(req.userId, leadData.email);
-      }
-      if (!existingLead && leadData.phone) {
-        existingLead = db.prepare('SELECT * FROM leads WHERE user_id = ? AND phone = ?').get(req.userId, leadData.phone);
-      }
-
-      if (existingLead) {
-        // Update existing lead
-        db.prepare('UPDATE leads SET service = COALESCE(?, service), budget = COALESCE(?, budget), updated_at = datetime(\'now\') WHERE id = ?').run(
-          leadData.service, leadData.budget, existingLead.id
-        );
-        db.prepare('UPDATE conversations SET lead_id = ? WHERE id = ?').run(existingLead.id, convId);
-      } else {
-        // Create new lead
-        const leadId = uuid();
-        const score = calculateScore(leadData);
-        db.prepare(`
-          INSERT INTO leads (id, user_id, name, phone, email, service, budget, source, status, score)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 'Web AI', 'New Lead', ?)
-        `).run(leadId, req.userId, leadData.name, leadData.phone || null, leadData.email || null, leadData.service || null, leadData.budget || null, score);
-        db.prepare('UPDATE conversations SET lead_id = ? WHERE id = ?').run(leadId, convId);
-      }
+    if (extracted.name) {
+      db.prepare('UPDATE conversations SET customer_name = COALESCE(NULLIF(customer_name, \'AI Test Customer\'), ?) WHERE id = ?')
+        .run(extracted.name, convId);
     }
+    if (extracted.phone) {
+      db.prepare('UPDATE conversations SET customer_phone = COALESCE(customer_phone, ?) WHERE id = ?')
+        .run(extracted.phone, convId);
+    }
+    if (extracted.email) {
+      db.prepare('UPDATE conversations SET customer_email = COALESCE(customer_email, ?) WHERE id = ?')
+        .run(extracted.email, convId);
+    }
+
+    const source = channel === 'whatsapp' ? 'WhatsApp' : channel === 'telegram' ? 'Telegram' : 'AI Chat';
+    const leadResult = await processConversationForLead({
+      userId: req.userId,
+      conversationId: convId,
+      source,
+    });
 
     res.json({
       response: aiResponse.content,
       conversation_id: convId,
       intent: aiResponse.intent,
       entities: aiResponse.entities,
-      demo_mode: !process.env.OPENAI_API_KEY
+      demo_mode: !process.env.OPENAI_API_KEY,
+      lead: leadResult.lead
+        ? {
+          id: leadResult.lead.id,
+          lead_code: leadResult.lead.lead_code,
+          unique_lead_key: leadResult.lead.unique_lead_key,
+          action: leadResult.action,
+          google_sheets_sync_status: leadResult.lead.google_sheets_sync_status,
+          status: leadResult.lead.status,
+        }
+        : null,
+      qualification: {
+        qualified: leadResult.action === 'created' || leadResult.action === 'updated',
+        action: leadResult.action,
+        reason: leadResult.reason,
+        missing: leadResult.missing || [],
+      },
     });
   } catch (err) {
     console.error('AI chat error:', err);
@@ -84,7 +92,7 @@ router.post('/chat', (req, res) => {
   }
 });
 
-function generateDemoAIResponse(message, business) {
+function generateDemoAIResponse(message, business, { extracted, qualification } = {}) {
   const lower = message.toLowerCase();
   const bizName = business?.name || 'our company';
   const bizDesc = business?.description || 'AI-powered business solutions';
@@ -93,94 +101,64 @@ function generateDemoAIResponse(message, business) {
   let entities = {};
   let content = '';
 
-  // Intent detection
   if (lower.match(/price|cost|how much|pricing|plan/)) {
     intent = 'pricing';
-    content = `Thank you for your interest in our pricing! ${bizName} offers flexible plans tailored to your needs. Our Starter plan is perfect for small businesses, Professional for growing teams, and Enterprise for advanced requirements. Would you like me to provide details for a specific plan?`;
-  } else if (lower.match(/service|what do you|offer|provide|help/)) {
+    content = `Thank you for your interest in pricing. ${bizName} offers flexible plans for WhatsApp AI Bot, Telegram AI Bot, and CRM Automation. I can share a tailored quote once I know a bit more about your requirement.`;
+  } else if (lower.match(/service|what do you|offer|provide/)) {
     intent = 'services';
-    content = `At ${bizName}, we provide ${bizDesc}. Our key services include AI customer support, lead generation, sales automation, and CRM management. Which service interests you the most?`;
-  } else if (lower.match(/support|help|issue|problem|error/)) {
+    content = `At ${bizName}, we provide ${bizDesc}. Our key services include WhatsApp AI Bot, Telegram AI Bot, CRM Automation, and sales workflows. Which service are you looking for?`;
+  } else if (lower.match(/support|issue|problem|error/)) {
     intent = 'support';
-    content = `I'd be happy to help! Could you please describe the issue you're experiencing? Our team at ${bizName} is committed to resolving your concerns quickly. If needed, I can connect you with a human agent.`;
-  } else if (lower.match(/hello|hi|hey|good (morning|afternoon|evening)/)) {
+    content = `I'd be happy to help. Could you describe the issue? If this is a new project, tell me which service you need and I can take your details.`;
+  } else if (lower.match(/hello|hi|hey|good (morning|afternoon|evening)/) && message.trim().length < 24) {
     intent = 'greeting';
-    content = `Hello! Welcome to ${bizName}. I'm your AI assistant, here to help with any questions about our services, pricing, or support. How can I assist you today?`;
-  } else if (lower.match(/hours|open|time|available|when/)) {
+    content = `Hello! Welcome to ${bizName}. I can help with WhatsApp AI Bot, Telegram AI Bot, CRM Automation, and related sales systems. What are you looking to set up?`;
+  } else if (lower.match(/hours|open|working hours|available|when/)) {
     intent = 'hours';
     const hours = business?.working_hours || 'Monday to Friday, 9 AM to 6 PM IST';
-    content = `Our working hours are ${hours}. However, our AI assistant is available 24/7 to help you with basic queries. For urgent matters, please reach out during business hours.`;
+    content = `Our working hours are ${hours}. I am available 24/7 to collect your requirement.`;
   } else if (lower.match(/contact|reach|email|phone|call/)) {
     intent = 'contact';
-    const contact = business?.contact_info ? JSON.parse(business.contact_info) : {};
-    content = `You can reach us at ${contact.email || 'our contact email'} or ${contact.phone || 'our phone number'}. Would you like to schedule a call with our team?`;
-  } else if (lower.match(/automat|workflow|ai|bot|chatbot/)) {
-    intent = 'automation_interest';
-    entities.service = 'AI Automation';
-    content = `Great question! Our AI automation can handle customer conversations, qualify leads, and manage your entire sales pipeline automatically. It works with WhatsApp and Telegram. What kind of automation are you looking for?`;
+    content = `I can have our team reach out. Share your name, phone number, and the service you need.`;
   } else if (lower.match(/whatsapp/)) {
     intent = 'whatsapp_interest';
-    entities.service = 'WhatsApp Automation';
-    content = `Our WhatsApp integration lets your AI assistant handle customer conversations, capture leads, and trigger sales workflows directly through WhatsApp Business. Would you like to learn more about setup?`;
+    entities.service = 'WhatsApp AI Bot';
+    content = `Our WhatsApp AI Bot can handle customer conversations, qualify buyers, and sync real leads into your CRM. Are you looking to automate sales, support, or both?`;
   } else if (lower.match(/telegram/)) {
     intent = 'telegram_interest';
-    entities.service = 'Telegram Automation';
-    content = `Our Telegram integration connects your bot to the AI sales system, allowing automatic customer support, lead qualification, and CRM updates. Would you like to know more?`;
-  } else if (lower.match(/crm|lead|pipeline|sales/)) {
+    entities.service = 'Telegram AI Bot';
+    content = `Our Telegram AI Bot connects to your sales workflow for support, qualification, and CRM updates. What would you like it to handle?`;
+  } else if (lower.match(/crm|pipeline/)) {
     intent = 'crm_interest';
-    content = `Our built-in CRM automatically captures and organizes leads from all your channels. It includes lead scoring, pipeline management, and follow-up automation. Every conversation becomes structured, actionable data.`;
+    entities.service = 'CRM Automation';
+    content = `CRM Automation captures qualified inquiries, prevents duplicate leads, and keeps Google Sheets in sync. What process are you trying to automate?`;
   } else if (lower.match(/thank|thanks/)) {
     intent = 'thanks';
-    content = `You're welcome! If you have any other questions, feel free to ask. We're here to help you succeed!`;
+    content = `You're welcome. If you want us to proceed, share any remaining details and I'll record the inquiry.`;
   } else if (lower.match(/bye|goodbye|see you/)) {
     intent = 'goodbye';
-    content = `Thank you for chatting with us! If you need any help in the future, don't hesitate to reach out. Have a great day!`;
+    content = `Thank you for chatting with us. Reach out anytime you are ready to move forward.`;
   } else {
-    content = `Thank you for your message. I'd be happy to help you with information about ${bizName}'s services, pricing, or any other questions. Could you tell me a bit more about what you're looking for?`;
+    content = `Thank you — I can help with ${bizName}'s services. Tell me what you need and I'll collect the details our team requires.`;
+  }
+
+  if (extracted?.service) entities.service = extracted.service;
+  if (extracted?.name) entities.name = extracted.name;
+  if (extracted?.phone) entities.phone = extracted.phone;
+  if (extracted?.email) entities.email = extracted.email;
+  if (extracted?.budget) entities.budget = extracted.budget;
+
+  if (qualification && !qualification.qualified && qualification.missing?.length) {
+    const followUp = nextQualificationQuestion(qualification.missing);
+    if (followUp && intent !== 'greeting' && intent !== 'thanks' && intent !== 'goodbye') {
+      content = `${content} ${followUp}`;
+    }
+  } else if (qualification?.qualified && extracted?.name) {
+    content = `Thanks ${extracted.name}. I've recorded your inquiry${extracted.service ? ` for ${extracted.service}` : ''}. Our team will follow up shortly. Is there anything else we should know about the requirement?`;
+    intent = 'lead_captured';
   }
 
   return { content, intent, entities };
-}
-
-function extractLeadFromConversation(messages) {
-  const allText = messages.map(m => m.content).join(' ');
-  const leadData = {};
-
-  // Extract name
-  const nameMatch = allText.match(/(?:my name is|i'm|i am|this is|name:?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
-  if (nameMatch) leadData.name = nameMatch[1];
-
-  // Extract phone
-  const phoneMatch = allText.match(/(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\+?\d{10,12}/);
-  if (phoneMatch) leadData.phone = phoneMatch[0];
-
-  // Extract email
-  const emailMatch = allText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-  if (emailMatch) leadData.email = emailMatch[0];
-
-  // Extract budget
-  const budgetMatch = allText.match(/(?:budget|price|cost|spend|invest|₹|rs\.?|inr)\s*(?:is|of|around|about|:)?\s*(₹?\s*[\d,]+(?:\s*(?:k|lakh|l))?)/i);
-  if (budgetMatch) leadData.budget = budgetMatch[1];
-
-  // Extract service
-  const serviceKeywords = ['ai automation', 'whatsapp bot', 'telegram bot', 'crm', 'chatbot', 'sales automation', 'lead generation'];
-  for (const keyword of serviceKeywords) {
-    if (allText.toLowerCase().includes(keyword)) {
-      leadData.service = keyword.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      break;
-    }
-  }
-
-  return Object.keys(leadData).length >= 1 ? leadData : null;
-}
-
-function calculateScore(leadData) {
-  let score = 30;
-  if (leadData.budget) score += 25;
-  if (leadData.service) score += 20;
-  if (leadData.phone) score += 10;
-  if (leadData.email) score += 15;
-  return Math.min(100, score);
 }
 
 export default router;

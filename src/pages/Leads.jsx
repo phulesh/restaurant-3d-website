@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, Search, Filter, X, ChevronDown, Trash2, Edit3, Eye,
-  MoreHorizontal, Loader2, CheckCircle2, XCircle, Phone, Mail, ArrowUpDown
+  Plus, Search, X, Trash2, Edit3, Eye,
+  Loader2, CheckCircle2, Phone, Mail, ArrowUpDown, RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const STATUSES = ['New Lead', 'Contacted', 'Qualified', 'Converted', 'Lost'];
-const SOURCES = ['WhatsApp', 'Telegram', 'Direct', 'Web Form', 'Referral', 'Web AI'];
+const SOURCES = ['Website', 'AI Chat', 'WhatsApp', 'Telegram', 'Manual', 'Webhook', 'Other'];
 
 export default function Leads() {
   const { api } = useAuth();
@@ -24,7 +24,8 @@ export default function Leads() {
   const [viewLead, setViewLead] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({ name: '', phone: '', email: '', service: '', budget: '', source: 'Direct', status: 'New Lead', notes: '' });
+  const [form, setForm] = useState({ name: '', phone: '', email: '', service: '', budget: '', source: 'Manual', status: 'New Lead', notes: '', requirement: '' });
+  const [retryingId, setRetryingId] = useState(null);
 
   const loadLeads = useCallback(async () => {
     try {
@@ -88,13 +89,31 @@ export default function Leads() {
     setEditLead(lead);
     setForm({
       name: lead.name, phone: lead.phone || '', email: lead.email || '',
-      service: lead.service || '', budget: lead.budget || '', source: lead.source || 'Direct',
-      status: lead.status || 'New Lead', notes: typeof lead.notes === 'string' ? lead.notes : ''
+      service: lead.service || '', budget: lead.budget || '', source: lead.source || 'Manual',
+      status: lead.status || 'New Lead', notes: typeof lead.notes === 'string' ? lead.notes : '',
+      requirement: lead.requirement || ''
     });
     setShowForm(true);
   };
 
-  const resetForm = () => setForm({ name: '', phone: '', email: '', service: '', budget: '', source: 'Direct', status: 'New Lead', notes: '' });
+  const resetForm = () => setForm({ name: '', phone: '', email: '', service: '', budget: '', source: 'Manual', status: 'New Lead', notes: '', requirement: '' });
+
+  const retrySync = async (id) => {
+    setRetryingId(id);
+    try {
+      await api(`/leads/${id}/retry-sync`, { method: 'POST' });
+      loadLeads();
+    } catch (e) { setError(e.message); }
+    finally { setRetryingId(null); }
+  };
+
+  const syncLabel = (lead) => {
+    const status = lead.google_sheets_sync_status;
+    if (status === 'synced') return { text: 'Google Sheets Synced', cls: 'sync-synced' };
+    if (status === 'failed') return { text: 'Sheets sync failed', cls: 'sync-failed' };
+    if (status === 'pending') return { text: 'Sheets pending', cls: 'sync-pending' };
+    return { text: 'Sheets not connected', cls: 'sync-off' };
+  };
 
   const toggleSort = (field) => {
     if (sort === field) setOrder(order === 'desc' ? 'asc' : 'desc');
@@ -155,13 +174,14 @@ export default function Leads() {
           <table className="leads-table">
             <thead>
               <tr>
+                <th onClick={() => toggleSort('lead_code')} className="sortable">Lead ID <ArrowUpDown size={12} /></th>
                 <th onClick={() => toggleSort('name')} className="sortable">Name <ArrowUpDown size={12} /></th>
                 <th>Contact</th>
                 <th>Service</th>
                 <th>Budget</th>
                 <th>Source</th>
                 <th onClick={() => toggleSort('status')} className="sortable">Status <ArrowUpDown size={12} /></th>
-                <th onClick={() => toggleSort('score')} className="sortable">Score <ArrowUpDown size={12} /></th>
+                <th>Sheets</th>
                 <th onClick={() => toggleSort('created_at')} className="sortable">Created <ArrowUpDown size={12} /></th>
                 <th>Actions</th>
               </tr>
@@ -169,6 +189,7 @@ export default function Leads() {
             <tbody>
               {leads.map(lead => (
                 <tr key={lead.id}>
+                  <td><span className="lead-code">{lead.lead_code || '—'}</span></td>
                   <td><strong>{lead.name}</strong></td>
                   <td className="contact-cell">
                     {lead.phone && <span><Phone size={12} /> {lead.phone}</span>}
@@ -182,7 +203,14 @@ export default function Leads() {
                       {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </td>
-                  <td><span className={`score-badge ${lead.score >= 70 ? 'hot' : lead.score >= 40 ? 'warm' : 'cold'}`}>{lead.score || 0}</span></td>
+                  <td>
+                    <span className={`sync-badge ${syncLabel(lead).cls}`}>{syncLabel(lead).text}</span>
+                    {lead.google_sheets_sync_status === 'failed' && (
+                      <button className="retry-sync-btn" onClick={() => retrySync(lead.id)} title="Retry Sync" disabled={retryingId === lead.id}>
+                        {retryingId === lead.id ? <Loader2 size={12} className="spin" /> : <RefreshCw size={12} />} Retry
+                      </button>
+                    )}
+                  </td>
                   <td>{new Date(lead.created_at).toLocaleDateString()}</td>
                   <td className="actions-cell">
                     <button onClick={() => setViewLead(lead)} title="View"><Eye size={15} /></button>
@@ -267,6 +295,7 @@ export default function Leads() {
               </div>
               <div className="modal-body">
                 <div className="lead-detail-grid">
+                  <div className="ld-field"><span>Lead ID</span><strong>{viewLead.lead_code || '—'}</strong></div>
                   <div className="ld-field"><span>Name</span><strong>{viewLead.name}</strong></div>
                   <div className="ld-field"><span>Phone</span><strong>{viewLead.phone || '—'}</strong></div>
                   <div className="ld-field"><span>Email</span><strong>{viewLead.email || '—'}</strong></div>
@@ -274,10 +303,24 @@ export default function Leads() {
                   <div className="ld-field"><span>Budget</span><strong>{viewLead.budget || '—'}</strong></div>
                   <div className="ld-field"><span>Source</span><strong>{viewLead.source || '—'}</strong></div>
                   <div className="ld-field"><span>Status</span><strong><span className={`status-tag status-${viewLead.status?.toLowerCase().replace(/\s/g, '-')}`}>{viewLead.status}</span></strong></div>
-                  <div className="ld-field"><span>Score</span><strong className={viewLead.score >= 70 ? 'green-text' : ''}>{viewLead.score || 0}/100</strong></div>
+                  <div className="ld-field"><span>Unique Lead Key</span><strong className="mono-key">{viewLead.unique_lead_key || '—'}</strong></div>
+                  <div className="ld-field"><span>Last Contacted</span><strong>{viewLead.last_contacted || '—'}</strong></div>
+                  <div className="ld-field"><span>Google Sheets</span><strong className={viewLead.google_sheets_sync_status === 'synced' ? 'green-text' : ''}>{syncLabel(viewLead).text}</strong></div>
                   <div className="ld-field"><span>Created</span><strong>{new Date(viewLead.created_at).toLocaleString()}</strong></div>
-                  <div className="ld-field"><span>Updated</span><strong>{new Date(viewLead.updated_at).toLocaleString()}</strong></div>
                 </div>
+                {viewLead.requirement && (
+                  <div className="ld-notes">
+                    <span>Requirement</span>
+                    <p>{viewLead.requirement}</p>
+                  </div>
+                )}
+                {viewLead.google_sheets_error && (
+                  <div className="ld-notes">
+                    <span>Sheets error</span>
+                    <p>{viewLead.google_sheets_error}</p>
+                    <button className="dash-btn" onClick={() => retrySync(viewLead.id)}><RefreshCw size={14} /> Retry Sync</button>
+                  </div>
+                )}
                 {viewLead.notes && (
                   <div className="ld-notes">
                     <span>Notes</span>

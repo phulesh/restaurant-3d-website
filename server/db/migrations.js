@@ -41,6 +41,8 @@ export function runMigrations() {
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
       business_id TEXT,
+      lead_code TEXT,
+      unique_lead_key TEXT,
       name TEXT NOT NULL,
       phone TEXT,
       email TEXT,
@@ -51,6 +53,12 @@ export function runMigrations() {
       score INTEGER DEFAULT 0,
       notes TEXT,
       tags TEXT,
+      requirement TEXT,
+      last_contacted TEXT,
+      conversation_history TEXT,
+      google_sheets_sync_status TEXT DEFAULT 'not_connected',
+      google_sheets_error TEXT,
+      google_sheets_row INTEGER,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -172,7 +180,66 @@ export function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
     CREATE INDEX IF NOT EXISTS idx_automations_user_id ON automations(user_id);
     CREATE INDEX IF NOT EXISTS idx_integrations_user_id ON integrations(user_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_unique_key ON leads(user_id, unique_lead_key) WHERE unique_lead_key IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_leads_lead_code ON leads(user_id, lead_code);
   `);
 
+  addColumnIfMissing('leads', 'lead_code', 'TEXT');
+  addColumnIfMissing('leads', 'unique_lead_key', 'TEXT');
+  addColumnIfMissing('leads', 'requirement', 'TEXT');
+  addColumnIfMissing('leads', 'last_contacted', 'TEXT');
+  addColumnIfMissing('leads', 'conversation_history', 'TEXT');
+  addColumnIfMissing('leads', 'google_sheets_sync_status', "TEXT DEFAULT 'not_connected'");
+  addColumnIfMissing('leads', 'google_sheets_error', 'TEXT');
+  addColumnIfMissing('leads', 'google_sheets_row', 'INTEGER');
+
+  backfillLeadIdentity();
+
   console.log('Database migrations completed.');
+}
+
+function addColumnIfMissing(table, column, definition) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+function backfillLeadIdentity() {
+  const leads = db.prepare('SELECT * FROM leads').all();
+  const counters = new Map();
+
+  for (const lead of leads) {
+    if (lead.lead_code) {
+      const n = parseInt(String(lead.lead_code).replace(/LEAD-/i, ''), 10);
+      if (Number.isFinite(n)) {
+        counters.set(lead.user_id, Math.max(counters.get(lead.user_id) || 0, n));
+      }
+    }
+  }
+
+  for (const lead of leads) {
+    const updates = {};
+    if (!lead.lead_code) {
+      const next = (counters.get(lead.user_id) || 0) + 1;
+      counters.set(lead.user_id, next);
+      updates.lead_code = `LEAD-${String(next).padStart(3, '0')}`;
+    }
+    if (!lead.unique_lead_key && lead.name && lead.phone && lead.service) {
+      const name = String(lead.name).trim().toLowerCase().replace(/\s+/g, ' ');
+      const phone = String(lead.phone).replace(/[^\d]/g, '');
+      const service = String(lead.service).toLowerCase().replace(/[+_/,-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\s+/g, '_');
+      if (name && phone && service) updates.unique_lead_key = `${name}|${phone}|${service}`;
+    }
+    if (!lead.last_contacted) {
+      updates.last_contacted = (lead.updated_at || lead.created_at || '').slice(0, 10) || null;
+    }
+    if (!lead.google_sheets_sync_status) {
+      updates.google_sheets_sync_status = 'not_connected';
+    }
+    const keys = Object.keys(updates);
+    if (!keys.length) continue;
+    const sets = keys.map((k) => `${k} = ?`).join(', ');
+    db.prepare(`UPDATE leads SET ${sets} WHERE id = ?`).run(...keys.map((k) => updates[k]), lead.id);
+  }
 }
