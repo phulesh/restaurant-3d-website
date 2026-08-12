@@ -136,7 +136,9 @@ export default function IntegrationsPage() {
                   <>
                     <div className="form-field"><label>Spreadsheet URL or ID</label><input type="text" value={configForm.spreadsheet_id || ''} onChange={e => setConfigForm({ ...configForm, spreadsheet_id: e.target.value })} placeholder="Google Sheets URL or ID" /></div>
                     <div className="form-field"><label>Worksheet Name</label><input type="text" value={configForm.worksheet || ''} onChange={e => setConfigForm({ ...configForm, worksheet: e.target.value })} placeholder="Sheet1" /></div>
-                    <div className="config-notice">Google OAuth credentials must be set in environment variables (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET).</div>
+                    <div className="form-field"><label>Service Account JSON</label><textarea rows={5} value={configForm.service_account_json || ''} onChange={e => setConfigForm({ ...configForm, service_account_json: e.target.value })} placeholder='{"type":"service_account","client_email":"...","private_key":"..."}' /></div>
+                    <div className="form-field"><label>OAuth Refresh Token (optional)</label><input type="password" value={configForm.refresh_token || ''} onChange={e => setConfigForm({ ...configForm, refresh_token: e.target.value })} placeholder="Stored only on the server" /></div>
+                    <div className="config-notice">Connection is verified against the Google Sheets API. “Synced” is shown on a lead only after Google confirms the write. Credentials are never exposed back to the browser.</div>
                   </>
                 )}
 

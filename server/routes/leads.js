@@ -2,11 +2,20 @@ import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import db from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
+import { LEAD_SOURCES, LEAD_STATUSES, buildUniqueLeadKey } from '../utils/leadIdentity.js';
+import { createNotification } from '../utils/notifications.js';
+import {
+  findLeadByUniqueKey,
+  ingestLead,
+  leadPublicView,
+  nextLeadCode,
+  retryLeadSync,
+  syncLeadToSheets,
+} from '../services/leadEngine.js';
 
 const router = Router();
 router.use(requireAuth);
 
-// List leads with search, filter, sort
 router.get('/', (req, res) => {
   try {
     const { search, status, source, sort, order, page = 1, limit = 50 } = req.query;
@@ -14,9 +23,9 @@ router.get('/', (req, res) => {
     const params = [req.userId];
 
     if (search) {
-      query += ' AND (name LIKE ? OR email LIKE ? OR phone LIKE ? OR service LIKE ?)';
+      query += ' AND (name LIKE ? OR email LIKE ? OR phone LIKE ? OR service LIKE ? OR lead_code LIKE ? OR unique_lead_key LIKE ?)';
       const s = `%${search}%`;
-      params.push(s, s, s, s);
+      params.push(s, s, s, s, s, s);
     }
     if (status && status !== 'all') {
       query += ' AND status = ?';
@@ -27,23 +36,22 @@ router.get('/', (req, res) => {
       params.push(source);
     }
 
-    const sortField = ['created_at', 'updated_at', 'name', 'score', 'status'].includes(sort) ? sort : 'created_at';
+    const sortField = ['created_at', 'updated_at', 'name', 'score', 'status', 'last_contacted', 'lead_code'].includes(sort) ? sort : 'created_at';
     const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
     query += ` ORDER BY ${sortField} ${sortOrder}`;
 
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     query += ' LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), offset);
+    params.push(parseInt(limit, 10), offset);
 
-    const leads = db.prepare(query).all(...params);
+    const leads = db.prepare(query).all(...params).map(leadPublicView);
 
-    // Count total
     let countQuery = 'SELECT COUNT(*) as total FROM leads WHERE user_id = ?';
     const countParams = [req.userId];
     if (search) {
-      countQuery += ' AND (name LIKE ? OR email LIKE ? OR phone LIKE ? OR service LIKE ?)';
+      countQuery += ' AND (name LIKE ? OR email LIKE ? OR phone LIKE ? OR service LIKE ? OR lead_code LIKE ? OR unique_lead_key LIKE ?)';
       const s = `%${search}%`;
-      countParams.push(s, s, s, s);
+      countParams.push(s, s, s, s, s, s);
     }
     if (status && status !== 'all') {
       countQuery += ' AND status = ?';
@@ -55,7 +63,6 @@ router.get('/', (req, res) => {
     }
     const { total } = db.prepare(countQuery).get(...countParams);
 
-    // Stats
     const stats = db.prepare(`
       SELECT
         COUNT(*) as total_leads,
@@ -67,72 +74,158 @@ router.get('/', (req, res) => {
       FROM leads WHERE user_id = ?
     `).get(req.userId);
 
-    res.json({ leads, total, stats, page: parseInt(page), limit: parseInt(limit) });
+    res.json({
+      leads,
+      total,
+      stats,
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      statuses: LEAD_STATUSES,
+      sources: LEAD_SOURCES,
+    });
   } catch (err) {
     console.error('List leads error:', err);
     res.status(500).json({ error: 'Failed to fetch leads' });
   }
 });
 
-// Get single lead
 router.get('/:id', (req, res) => {
   try {
     const lead = db.prepare('SELECT * FROM leads WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
 
-    // Get related conversations
     const conversations = db.prepare('SELECT * FROM conversations WHERE lead_id = ?').all(lead.id);
-
-    res.json({ lead, conversations });
+    res.json({ lead: leadPublicView(lead), conversations });
   } catch (err) {
     console.error('Get lead error:', err);
     res.status(500).json({ error: 'Failed to fetch lead' });
   }
 });
 
-// Create lead
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const { name, phone, email, service, budget, source, status, notes, tags } = req.body;
+    const { name, phone, email, service, budget, source, status, notes, requirement, tags } = req.body;
     if (!name) return res.status(400).json({ error: 'Lead name is required' });
 
+    const uniqueLeadKey = buildUniqueLeadKey(name, phone, service);
+    if (uniqueLeadKey) {
+      const result = await ingestLead({
+        userId: req.userId,
+        name,
+        phone,
+        email,
+        service,
+        budget,
+        requirement: requirement || notes,
+        source: source || 'Manual',
+        status,
+        notes,
+        alreadyQualified: true,
+        allowConversion: status === 'Converted',
+      });
+      const code = result.action === 'created' ? 201 : 200;
+      return res.status(code).json({
+        lead: leadPublicView(result.lead),
+        action: result.action,
+        uniqueLeadKey: result.uniqueLeadKey,
+        duplicate: result.action === 'updated',
+      });
+    }
+
+    // Incomplete manual records (missing phone or service) cannot form a unique key.
     const id = uuid();
-    const score = calculateLeadScore({ budget, service, source });
-
+    const leadCode = nextLeadCode(req.userId);
     db.prepare(`
-      INSERT INTO leads (id, user_id, name, phone, email, service, budget, source, status, score, notes, tags)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, req.userId, name, phone || null, email || null, service || null, budget || null,
-      source || 'Direct', status || 'New Lead', score, notes || null, tags || null);
-
+      INSERT INTO leads (id, user_id, lead_code, name, phone, email, service, budget, source, status, notes, tags, requirement, last_contacted, google_sheets_sync_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'not_connected')
+    `).run(
+      id, req.userId, leadCode, name, phone || null, email || null, service || null, budget || null,
+      source || 'Manual', status && status !== 'Converted' ? status : 'New Lead', notes || null, tags || null,
+      requirement || null
+    );
     const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(id);
-
-    // Create notification
     createNotification(req.userId, 'new_lead', 'New Lead Created', `${name} has been added to your pipeline.`);
-
-    res.status(201).json({ lead });
+    res.status(201).json({ lead: leadPublicView(lead), action: 'created', uniqueLeadKey: null });
   } catch (err) {
     console.error('Create lead error:', err);
     res.status(500).json({ error: 'Failed to create lead' });
   }
 });
 
-// Update lead
-router.put('/:id', (req, res) => {
+router.post('/ingest', async (req, res) => {
+  try {
+    const result = await ingestLead({
+      userId: req.userId,
+      ...req.body,
+      source: req.body.source || 'Webhook',
+      alreadyQualified: true,
+    });
+    if (result.action === 'skipped') {
+      return res.status(422).json({
+        error: 'Lead is not qualified',
+        reason: result.reason,
+        missing: result.missing,
+      });
+    }
+    res.status(result.action === 'created' ? 201 : 200).json({
+      lead: leadPublicView(result.lead),
+      action: result.action,
+      uniqueLeadKey: result.uniqueLeadKey,
+      duplicate: result.action === 'updated',
+    });
+  } catch (err) {
+    console.error('Ingest lead error:', err);
+    res.status(500).json({ error: 'Failed to ingest lead' });
+  }
+});
+
+router.put('/:id', async (req, res) => {
   try {
     const lead = db.prepare('SELECT * FROM leads WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
 
-    const { name, phone, email, service, budget, source, status, notes, tags } = req.body;
-    const score = calculateLeadScore({ budget: budget || lead.budget, service: service || lead.service, source: source || lead.source });
+    const { name, phone, email, service, budget, source, status, notes, tags, requirement } = req.body;
+
+    if (status === 'Converted' && lead.status !== 'Converted') {
+      // Explicit CRM conversion is allowed here — this is the business process.
+    }
+
+    const nextName = name || lead.name;
+    const nextPhone = phone !== undefined ? phone : lead.phone;
+    const nextService = service !== undefined ? service : lead.service;
+    const nextKey = buildUniqueLeadKey(nextName, nextPhone, nextService);
+
+    if (nextKey && nextKey !== lead.unique_lead_key) {
+      const conflict = findLeadByUniqueKey(req.userId, nextKey);
+      if (conflict && conflict.id !== lead.id) {
+        return res.status(409).json({
+          error: 'Another lead already exists for this name, phone and service',
+          existing_lead_id: conflict.id,
+          existing_lead_code: conflict.lead_code,
+          uniqueLeadKey: nextKey,
+        });
+      }
+    }
 
     db.prepare(`
-      UPDATE leads SET name = ?, phone = ?, email = ?, service = ?, budget = ?, source = ?, status = ?, score = ?, notes = ?, tags = ?, updated_at = datetime('now')
+      UPDATE leads SET
+        name = ?, phone = ?, email = ?, service = ?, budget = ?, source = ?,
+        status = ?, notes = ?, tags = ?, requirement = ?, unique_lead_key = ?,
+        last_contacted = datetime('now'), updated_at = datetime('now')
       WHERE id = ?
     `).run(
-      name || lead.name, phone ?? lead.phone, email ?? lead.email,
-      service ?? lead.service, budget ?? lead.budget, source ?? lead.source,
-      status || lead.status, score, notes ?? lead.notes, tags ?? lead.tags, req.params.id
+      nextName,
+      nextPhone ?? lead.phone,
+      email !== undefined ? email : lead.email,
+      nextService ?? lead.service,
+      budget !== undefined ? budget : lead.budget,
+      source !== undefined ? source : lead.source,
+      status || lead.status,
+      notes !== undefined ? notes : lead.notes,
+      tags !== undefined ? tags : lead.tags,
+      requirement !== undefined ? requirement : lead.requirement,
+      nextKey || lead.unique_lead_key,
+      req.params.id
     );
 
     if (status && status !== lead.status) {
@@ -143,14 +236,30 @@ router.put('/:id', (req, res) => {
     }
 
     const updated = db.prepare('SELECT * FROM leads WHERE id = ?').get(req.params.id);
-    res.json({ lead: updated });
+    const { syncLeadToSheets } = await import('../services/leadEngine.js');
+    const synced = await syncLeadToSheets(req.userId, updated, { allowAppend: false });
+    res.json({ lead: leadPublicView(synced) });
   } catch (err) {
     console.error('Update lead error:', err);
     res.status(500).json({ error: 'Failed to update lead' });
   }
 });
 
-// Delete lead
+router.post('/:id/retry-sync', async (req, res) => {
+  try {
+    const synced = await retryLeadSync(req.userId, req.params.id);
+    if (!synced) return res.status(404).json({ error: 'Lead not found' });
+    res.json({
+      lead: leadPublicView(synced),
+      google_sheets_sync_status: synced.google_sheets_sync_status,
+      google_sheets_error: synced.google_sheets_error,
+    });
+  } catch (err) {
+    console.error('Retry sync error:', err);
+    res.status(500).json({ error: 'Failed to retry Google Sheets sync' });
+  }
+});
+
 router.delete('/:id', (req, res) => {
   try {
     const lead = db.prepare('SELECT * FROM leads WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
@@ -164,7 +273,6 @@ router.delete('/:id', (req, res) => {
   }
 });
 
-// Add note to lead
 router.post('/:id/notes', (req, res) => {
   try {
     const lead = db.prepare('SELECT * FROM leads WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
@@ -173,38 +281,25 @@ router.post('/:id/notes', (req, res) => {
     const { note } = req.body;
     if (!note) return res.status(400).json({ error: 'Note content is required' });
 
-    const existingNotes = lead.notes ? JSON.parse(lead.notes) : [];
+    const existingNotes = lead.notes ? safeParseNotes(lead.notes) : [];
     existingNotes.push({ text: note, created_at: new Date().toISOString() });
-    db.prepare('UPDATE leads SET notes = ?, updated_at = datetime(\'now\') WHERE id = ?').run(JSON.stringify(existingNotes), req.params.id);
+    db.prepare("UPDATE leads SET notes = ?, updated_at = datetime('now') WHERE id = ?")
+      .run(JSON.stringify(existingNotes), req.params.id);
 
     const updated = db.prepare('SELECT * FROM leads WHERE id = ?').get(req.params.id);
-    res.json({ lead: updated });
+    res.json({ lead: leadPublicView(updated) });
   } catch (err) {
     console.error('Add note error:', err);
     res.status(500).json({ error: 'Failed to add note' });
   }
 });
 
-function calculateLeadScore({ budget, service, source }) {
-  let score = 30; // base
-  if (budget && budget !== 'Not provided' && budget !== '—' && budget !== '') {
-    const numBudget = parseInt(budget.replace(/[^0-9]/g, ''));
-    if (numBudget >= 50000) score += 30;
-    else if (numBudget >= 20000) score += 20;
-    else if (numBudget >= 5000) score += 10;
-    else score += 5;
-  }
-  if (service && service !== 'General Inquiry') score += 15;
-  if (source === 'WhatsApp' || source === 'Telegram') score += 10;
-  if (source === 'Referral') score += 15;
-  return Math.min(100, score);
-}
-
-function createNotification(userId, type, title, message) {
+function safeParseNotes(raw) {
   try {
-    db.prepare('INSERT INTO notifications (id, user_id, type, title, message) VALUES (?, ?, ?, ?, ?)').run(uuid(), userId, type, title, message);
-  } catch (e) {
-    console.error('Notification creation failed:', e);
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [{ text: raw, created_at: new Date().toISOString() }];
+  } catch {
+    return [{ text: raw, created_at: new Date().toISOString() }];
   }
 }
 

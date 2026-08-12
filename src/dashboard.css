@@ -410,6 +410,29 @@
 }
 .actions-cell button:hover { color: #fff; background: rgba(255,255,255,0.05); }
 .actions-cell button.danger:hover { color: #f87171; }
+.lead-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem; color: #20d9ff; letter-spacing: 0.02em;
+}
+.sync-badge {
+  display: inline-block; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.7rem; font-weight: 600;
+}
+.sync-synced { background: rgba(69,240,181,0.12); color: #45f0b5; }
+.sync-failed { background: rgba(239,68,68,0.12); color: #f87171; }
+.sync-pending { background: rgba(251,191,36,0.12); color: #fbbf24; }
+.sync-off { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4); }
+.retry-sync-btn {
+  display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.3rem;
+  background: none; border: 1px solid rgba(239,68,68,0.25); color: #f87171;
+  border-radius: 6px; font-size: 0.7rem; padding: 0.15rem 0.4rem; cursor: pointer; font-family: inherit;
+}
+.retry-sync-btn:hover { background: rgba(239,68,68,0.08); }
+.mono-key { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; word-break: break-all; }
+.lead-event-badge {
+  padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600;
+  background: rgba(69,240,181,0.1); color: #45f0b5; border: 1px solid rgba(69,240,181,0.2);
+}
+.lead-event-badge.updated { background: rgba(32,217,255,0.1); color: #20d9ff; border-color: rgba(32,217,255,0.2); }
 
 /* --- Modals --- */
 .modal-overlay {

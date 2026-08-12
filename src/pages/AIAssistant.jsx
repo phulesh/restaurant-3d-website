@@ -10,6 +10,7 @@ export default function AIAssistant() {
   const [sending, setSending] = useState(false);
   const [conversationId, setConversationId] = useState(null);
   const [demoMode, setDemoMode] = useState(false);
+  const [leadEvent, setLeadEvent] = useState(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -31,6 +32,11 @@ export default function AIAssistant() {
       setMessages(prev => [...prev, { sender: 'ai', content: data.response, intent: data.intent, created_at: new Date().toISOString() }]);
       setConversationId(data.conversation_id);
       setDemoMode(data.demo_mode);
+      if (data.lead?.action === 'created') {
+        setLeadEvent({ type: 'created', code: data.lead.lead_code, sync: data.lead.google_sheets_sync_status });
+      } else if (data.lead?.action === 'updated') {
+        setLeadEvent({ type: 'updated', code: data.lead.lead_code, sync: data.lead.google_sheets_sync_status });
+      }
     } catch (e) {
       setMessages(prev => [...prev, { sender: 'ai', content: 'Sorry, I encountered an error. Please try again.', created_at: new Date().toISOString() }]);
     } finally {
@@ -41,6 +47,7 @@ export default function AIAssistant() {
   const clearChat = () => {
     setMessages([]);
     setConversationId(null);
+    setLeadEvent(null);
   };
 
   const quickPrompts = [
@@ -61,6 +68,12 @@ export default function AIAssistant() {
         </div>
         <div className="ai-header-actions">
           {demoMode && <span className="demo-badge">DEMO MODE</span>}
+          {leadEvent && (
+            <span className={`lead-event-badge ${leadEvent.type}`}>
+              {leadEvent.type === 'created' ? 'Lead created' : 'Existing lead updated'} {leadEvent.code}
+              {leadEvent.sync === 'synced' ? ' · Google Sheets Synced' : leadEvent.sync === 'failed' ? ' · Sheets sync failed' : ''}
+            </span>
+          )}
           <button className="dash-btn" onClick={clearChat}><Trash2 size={14} /> Clear Chat</button>
         </div>
       </div>

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Plus, MoreHorizontal, Search, MessageCircle, Send, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const STAGES = ['New Lead', 'Contacted', 'Qualified', 'Converted', 'Won'];
+const STAGES = ['New Lead', 'Contacted', 'Qualified', 'Converted', 'Lost'];
 
 export default function CRMPage() {
   const { api } = useAuth();
@@ -36,7 +36,7 @@ export default function CRMPage() {
     'Contacted': leads.filter(l => l.status === 'Contacted'),
     'Qualified': leads.filter(l => l.status === 'Qualified'),
     'Converted': leads.filter(l => l.status === 'Converted'),
-    'Won': leads.filter(l => l.status === 'Converted' || l.status === 'Won'),
+    'Lost': leads.filter(l => l.status === 'Lost'),
   };
 
   if (loading) return <div className="dash-loading"><div className="loader" /><span>Loading CRM...</span></div>;
